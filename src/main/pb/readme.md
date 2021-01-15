@@ -1,0 +1,1 @@
+This folder contains the .proto from the cockatrice open source project. They are used by the replay parser.
