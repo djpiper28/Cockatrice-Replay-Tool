@@ -27,8 +27,8 @@ public class Main {
         StringBuilder players = new StringBuilder();
         for(int i = 0; i < maxPlayers; i++) {
             int ii = i;
-            players.append(String.format(" Player %d ID, Player %d Name, Player %d Hash", ii,
-                    ii, ii));
+            players.append(String.format(" Player %d Table Position, Player %d Name, Player %d DeckHash Hash, Player %d Hands Drawn", ii,
+                    ii, ii, ii));
             if (i < maxPlayers - 2) players.append(",");
         }
 

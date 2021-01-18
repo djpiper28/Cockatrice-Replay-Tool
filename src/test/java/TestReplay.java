@@ -32,6 +32,7 @@ public class TestReplay {
                 throw new Exception("Test fail.");
             }
 
+            assert (replay.getTurnsTaken() > 0);
             System.out.println("[TEST] SUCCESS");
         } catch (Exception e) {
             System.out.println("[TEST] FAILURE - Exception thrown.");

@@ -1,5 +1,6 @@
 import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.InvalidProtocolBufferException;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -9,20 +10,20 @@ import java.util.List;
 
 public class Replay {
 
-    private List<Player> players;
 
     class Player {
         @Override
         public String toString() {
-            return "Player{" +
+            return "\nPlayer{" +
                     "deckHash='" + deckHash + '\'' +
                     ", name='" + name + '\'' +
-                    ", id=" + id +
-                    '}';
+                    ", table position=" + id +
+                    ", handsDrawn=" + handsDrawn +
+                    "}";
         }
 
         public String deckHash, name;
-        public int id;
+        public int id, handsDrawn;
 
         public Player(int id, String name) {
             this.id = id;
@@ -30,7 +31,7 @@ public class Replay {
         }
 
         public String getCSV() {
-            return String.format("%d,%s,%s", id, name, deckHash);
+            return String.format("%d,%s,%s,%d", id, name, deckHash, handsDrawn);
         }
     }
 
@@ -39,17 +40,17 @@ public class Replay {
     private int turnsTaken;
     private int duration;
     private boolean spectatorsAllowed, spectatorsCanChat, spectatorsCanSeeHand;
+    private List<Player> players;
 
     public String getCSVLine() {
-        return String.format("%d,%d,%d,%d,%b,%b,%b,%s",replayID,
+        return String.format("%d,%d,%d,%d,%b,%b,%b,%s", replayID,
                 playerCount, turnsTaken, duration, spectatorsAllowed, spectatorsCanChat,
                 spectatorsCanSeeHand, getPlayersCSV());
     }
 
     private String getPlayersCSV() {
         StringBuilder output = new StringBuilder();
-        for(int i = 0; i < players.size(); i++) {
-            int ii = i;
+        for (int i = 0; i < players.size(); i++) {
             output.append(players.get(i).getCSV());
 
             if (i < players.size() - 2) output.append(",");
@@ -75,6 +76,7 @@ public class Replay {
         EventSetActivePlayer.registerAllExtensions(registry);
 
         ContextDeckSelect.registerAllExtensions(registry);
+        ContextMulligan.registerAllExtensions(registry);
         //ContextConcede.registerAllExtensions(registry);
         //CommandDeckSelect.registerAllExtensions(registry);
 
@@ -89,7 +91,7 @@ public class Replay {
     public String toString() {
         return "Replay{" +
                 "players=" + players.toString() +
-                ", replayID=" + replayID +
+                ",\nreplayID=" + replayID +
                 ", playerCount=" + playerCount +
                 ", turnsTaken=" + turnsTaken +
                 ", duration=" + duration +
@@ -143,16 +145,24 @@ public class Replay {
         this.spectatorsCanSeeHand = replay.getGameInfo().getSpectatorsOmniscient();
 
         List<Integer> turnPlayerCache = new LinkedList<>();
+        int consecutiveTurns = 0;
 
         //For each event
         System.out.printf("[INFO] Reading replay file with %d event container objects...\n", replay.getEventListList().size());
         for (GameEventContainerOuterClass.GameEventContainer eventContainer : replay.getEventListList()) {
             if (eventContainer.getEventListList().size() > 0) {
+                String hash = eventContainer.getContext().getExtension(ContextDeckSelect.Context_DeckSelect.ext).getDeckHash();
                 if (eventContainer.getContext().hasExtension(ContextDeckSelect.Context_DeckSelect.ext)) {
-                    String hash = eventContainer.getContext().getExtension(ContextDeckSelect.Context_DeckSelect.ext).getDeckHash();
                     for (Player player : this.players) {
                         if (player.id == eventContainer.getEventListList().get(0).getPlayerId()) {
                             player.deckHash = hash;
+                            break;
+                        }
+                    }
+                } else if (eventContainer.getContext().hasExtension(ContextMulligan.Context_Mulligan.ext)) {
+                    for (Player player : this.players) {
+                        if (player.id == eventContainer.getEventListList().get(0).getPlayerId()) {
+                            player.handsDrawn++;
                             break;
                         }
                     }
@@ -161,23 +171,37 @@ public class Replay {
 
             List<GameEventOuterClass.GameEvent> events = eventContainer.getEventListList();
             for (GameEventOuterClass.GameEvent event : events) {
-                int id = event.getPlayerId();
                 if (event.hasExtension(EventSetActivePlayer.Event_SetActivePlayer.ext)) {
+                    int id = event.getExtension(EventSetActivePlayer.Event_SetActivePlayer.ext).getActivePlayerId();
                     turnPlayerCache.add(id);
+                    consecutiveTurns++;
                     int i = 0;
+
                     for (Integer playerID : turnPlayerCache) {
-                        if (id == (int) playerID) i++;
-                        if (i >= 2) {
-                            this.turnsTaken++;
-                            turnPlayerCache = new LinkedList<>();
-                            turnPlayerCache.add(id);
-                            break;
+                        if (id == playerID) {
+                            i++;
+                            if (i == 2) {
+                                this.turnsTaken++;
+
+                                if (consecutiveTurns + 1 == turnPlayerCache.size()) {
+                                    this.turnsTaken--;
+                                }
+
+                                turnPlayerCache = new LinkedList<>();
+                                turnPlayerCache.add(id);
+                                consecutiveTurns = 0;
+                                break;
+                            }
                         }
                     }
-                } else if (event.hasExtension(EventJoin.Event_Join.ext)) {
-                    String name = event.getExtension(EventJoin.Event_Join.ext).getPlayerProperties().getUserInfo().getName();
-                    id = event.getExtension(EventJoin.Event_Join.ext).getPlayerProperties().getPlayerId();
-                    players.add(new Player(id, name));
+                } else {
+                    int id = event.getPlayerId();
+                    consecutiveTurns = 0;
+                    if (event.hasExtension(EventJoin.Event_Join.ext)) {
+                        String name = event.getExtension(EventJoin.Event_Join.ext).getPlayerProperties().getUserInfo().getName();
+                        id = event.getExtension(EventJoin.Event_Join.ext).getPlayerProperties().getPlayerId();
+                        players.add(new Player(id, name));
+                    }
                 }
             }
         }
