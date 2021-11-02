@@ -10,31 +10,6 @@ import java.util.List;
 
 public class Replay {
 
-
-    class Player {
-        @Override
-        public String toString() {
-            return "\nPlayer{" +
-                    "deckHash='" + deckHash + '\'' +
-                    ", name='" + name + '\'' +
-                    ", table position=" + id +
-                    ", handsDrawn=" + handsDrawn +
-                    "}";
-        }
-
-        public String deckHash, name;
-        public int id, handsDrawn;
-
-        public Player(int id, String name) {
-            this.id = id;
-            this.name = name;
-        }
-
-        public String getCSV() {
-            return String.format("%d,%s,%s,%d", id, name, deckHash, handsDrawn);
-        }
-    }
-
     private long replayID;
     private int playerCount;
     private int turnsTaken;
@@ -154,15 +129,15 @@ public class Replay {
                 String hash = eventContainer.getContext().getExtension(ContextDeckSelect.Context_DeckSelect.ext).getDeckHash();
                 if (eventContainer.getContext().hasExtension(ContextDeckSelect.Context_DeckSelect.ext)) {
                     for (Player player : this.players) {
-                        if (player.id == eventContainer.getEventListList().get(0).getPlayerId()) {
-                            player.deckHash = hash;
+                        if (player.getId() == eventContainer.getEventListList().get(0).getPlayerId()) {
+                            player.setDeckHash(hash);
                             break;
                         }
                     }
                 } else if (eventContainer.getContext().hasExtension(ContextMulligan.Context_Mulligan.ext)) {
                     for (Player player : this.players) {
-                        if (player.id == eventContainer.getEventListList().get(0).getPlayerId()) {
-                            player.handsDrawn++;
+                        if (player.getId() == eventContainer.getEventListList().get(0).getPlayerId()) {
+                            player.setHandsDrawn(player.getHandsDrawn() + 1);
                             break;
                         }
                     }
@@ -200,13 +175,13 @@ public class Replay {
                     if (event.hasExtension(EventJoin.Event_Join.ext)) {
                         String name = event.getExtension(EventJoin.Event_Join.ext).getPlayerProperties().getUserInfo().getName();
                         id = event.getExtension(EventJoin.Event_Join.ext).getPlayerProperties().getPlayerId();
-                        players.add(new Player(id, name));
+                        this.players.add(new Player(id, name));
                     }
                 }
             }
         }
 
-        this.playerCount = players.size();
+        this.playerCount = this.players.size();
     }
 
 }

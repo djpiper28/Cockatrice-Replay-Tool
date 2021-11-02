@@ -12,16 +12,16 @@ public class TestReplay {
             System.out.printf("[TEST-INFO] Replay stats: %s\n", replay.toString());
 
             boolean isNullDeckHash = false;
-            for (Replay.Player player: replay.getPlayers()) {
-                if (player.deckHash == null) {
+            for (Player player: replay.getPlayers()) {
+                if (player.getDeckHash() == null) {
                     isNullDeckHash = true;
                     System.out.printf("[TEST-ERROR] %s has null hash\n", player.toString());
                 }
             }
 
             boolean isNoID = false;
-            for (Replay.Player player: replay.getPlayers()) {
-                if (player.id == -1) {
+            for (Player player: replay.getPlayers()) {
+                if (player.getId() == -1) {
                     isNoID = true;
                     System.out.printf("[TEST-ERROR] %s has no id\n", player.toString());
                 }

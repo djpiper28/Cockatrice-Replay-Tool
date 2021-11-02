@@ -1,6 +1,8 @@
 .gradle/
 .idea/
 build/
-*.cod
+*.cor
 *.env
 *.csv
+stress/
+generated-sources/
